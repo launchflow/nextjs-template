@@ -1,57 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function Home() {
   const [text, setText] = useState("");
   const [fullText, setFullText] = useState("Hello, World!");
   const [index, setIndex] = useState(0);
-  const [isTypingComplete, setIsTypingComplete] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
 
+  // Define fetchNewMessage with useCallback to avoid recreation
+  const fetchNewMessage = useCallback(async () => {
+    console.log("fetchNewMessage called");
+    try {
+      const response = await fetch("/api/hello");
+      console.log("API response received");
+      const data = await response.json();
+      console.log("New message:", data.message);
+
+      // Reset everything for the new message
+      setText("");
+      setIndex(0);
+      setFullText(data.message);
+    } catch (error) {
+      console.error("Error fetching message:", error);
+    }
+  }, []);
+
+  // Separate useEffect for typing animation
   useEffect(() => {
-    // Still typing
     if (index < fullText.length) {
       const timeout = setTimeout(() => {
         setText((prev) => prev + fullText[index]);
         setIndex((prev) => prev + 1);
       }, 150);
+
       return () => clearTimeout(timeout);
     }
-    // Typing just completed
-    else if (index === fullText.length && !isTypingComplete && !isFetching) {
-      setIsTypingComplete(true);
+    // When typing is complete, wait and fetch new message
+    else if (index === fullText.length) {
+      console.log("Typing complete, waiting 2 seconds...");
 
-      // Wait 2 seconds then fetch new message
       const waitTimeout = setTimeout(() => {
-        setIsFetching(true);
+        console.log("2 seconds passed, fetching new message...");
         fetchNewMessage();
       }, 2000);
 
       return () => clearTimeout(waitTimeout);
     }
-  }, [index, fullText, isTypingComplete, isFetching]);
-
-  const fetchNewMessage = async () => {
-    try {
-      console.log("Fetching new message...");
-      const response = await fetch("/api/hello");
-      const data = await response.json();
-
-      // Reset for new message
-      setText("");
-      setIndex(0);
-      setFullText(data.message);
-      setIsTypingComplete(false);
-      setIsFetching(false);
-
-      console.log("New message received:", data.message);
-    } catch (error) {
-      console.error("Error fetching message:", error);
-      setIsFetching(false);
-    }
-  };
-
+  }, [index, fullText, fetchNewMessage]);
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gradient-to-b from-slate-50 to-slate-100">
       <div className="relative flex flex-col items-center">
